@@ -191,7 +191,7 @@
         1) Al abrir el visor se intentará usar tu ubicación actual automáticamente.<br />
         2) Si no funciona o prefieres otro lugar, toca el mapa para marcar la ubicación del problema.<br />
         3) Puedes tomar una foto o subirla desde tu galería.<br />
-        4) Completa el formulario y presiona <strong>Guardar reporte</strong>.
+        4) Completa el formulario y presiona <strong> reporte</strong>.
       </p>
 
       <form id="form-reporte">
@@ -258,7 +258,7 @@
           capture="environment"
         />
 
-        <button type="submit" id="btn-guardar" disabled>Guardar reporte</button>
+        <button type="submit" id="btn-" disabled> reporte</button>
         <p class="small">
           El botón se habilita cuando el sistema obtiene tu ubicación o cuando seleccionas una en el mapa.
         </p>
@@ -291,9 +291,42 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // =====================================================
-// FUNCIÓN PARA GUARDAR EN SUPABASE
+// FUNCIÓN PARA GUARDAR EN SUPABASE (con Storage)
 // =====================================================
 async function guardarEnSupabase(feature) {
+
+  let fotoURL = null;
+
+  // 1) Subir foto al bucket si existe base64
+  if (feature.properties.foto_dataurl) {
+    const base64 = feature.properties.foto_dataurl;
+    const fileName = `foto_${Date.now()}.jpg`;
+
+    try {
+      // convertir dataURL -> Blob
+      const res = await fetch(base64);
+      const blob = await res.blob();
+
+      // subir a Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('fotos_reportes')
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("❌ ERROR SUBIENDO FOTO:", uploadError);
+      } else {
+        // construir URL pública
+        fotoURL = `${SUPABASE_URL}/storage/v1/object/public/fotos_reportes/${fileName}`;
+      }
+    } catch (e) {
+      console.error("❌ Error convirtiendo base64 a Blob:", e);
+    }
+  }
+
+  // 2) Insertar reporte en la tabla
   const { data, error } = await supabase
     .from("reportes")
     .insert({
@@ -306,7 +339,7 @@ async function guardarEnSupabase(feature) {
       accesibilidad: feature.properties.accesibilidad,
       descripcion: feature.properties.descripcion,
       fecha: feature.properties.fecha || null,
-      foto_dataurl: feature.properties.foto_dataurl || null,
+      foto_url: fotoURL,       // 👈 ahora guardamos la URL
       aprobado: false
     });
 
@@ -357,8 +390,11 @@ let capaReportes = L.geoJSON(null, {
       <b>Fecha:</b> ${p.fecha || "-"}<br>
       <b>Descripción:</b> ${p.descripcion || "-"}
     `;
-    if (p.foto_dataurl) {
-      html += `<br><img src="${p.foto_dataurl}" style="max-width:200px; margin-top:4px;">`;
+    if (p.foto_url) {
+    html += `<br><img src="${p.foto_url}" style="max-width:200px; margin-top:4px;">`;
+    } else if (p.foto_dataurl) {
+    // por si quedaron reportes viejos con base64
+    html += `<br><img src="${p.foto_dataurl}" style="max-width:200px; margin-top:4px;">`;
     }
     layer.bindPopup(html);
   }
@@ -394,7 +430,7 @@ async function cargarReportesIniciales() {
         accesibilidad: row.accesibilidad,
         descripcion: row.descripcion,
         fecha: row.fecha,
-        foto_dataurl: row.foto_dataurl
+        foto_url: row.foto_url
       },
       geometry: {
         type: "Point",
@@ -569,7 +605,7 @@ supabase
           accesibilidad: row.accesibilidad,
           descripcion: row.descripcion,
           fecha: row.fecha,
-          foto_dataurl: row.foto_dataurl
+          foto_url: row.foto_url
         },
         geometry: {
           type: "Point",
@@ -588,6 +624,7 @@ supabase
   )
   .subscribe();
 </script>
+
 
 
 
