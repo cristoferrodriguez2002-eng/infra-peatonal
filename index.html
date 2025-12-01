@@ -258,7 +258,7 @@
           capture="environment"
         />
 
-        <button type="submit" id="btn-guardar" disabled>Guardar reporte</button>
+        <button type="submit" id="btn-" disabled>Guardar reporte</button>
         <p class="small">
           El botón se habilita cuando el sistema obtiene tu ubicación o cuando seleccionas una en el mapa.
         </p>
@@ -466,7 +466,7 @@ let marcadorTemporal = null;
 
 const latInput = document.getElementById("lat");
 const lngInput = document.getElementById("lng");
-const btnGuardar = document.getElementById("btn-guardar");
+const btnGuardar = document.getElementById("btn-");
 
 function actualizarUbicacion(lat, lng) {
   latInput.value = lat.toFixed(6);
@@ -624,6 +624,7 @@ supabase
   )
   .subscribe();
 </script>
+
 
 
 
