@@ -307,6 +307,7 @@ async function guardarEnSupabase(feature) {
       descripcion: feature.properties.descripcion,
       fecha: feature.properties.fecha || null,
       foto_dataurl: feature.properties.foto_dataurl || null
+      aprobado: false
     });
 
   if (error) {
@@ -583,4 +584,5 @@ supabase
   )
   .subscribe();
 </script>
+
 
