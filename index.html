@@ -191,7 +191,7 @@
         1) Al abrir el visor se intentará usar tu ubicación actual automáticamente.<br />
         2) Si no funciona o prefieres otro lugar, toca el mapa para marcar la ubicación del problema.<br />
         3) Puedes tomar una foto o subirla desde tu galería.<br />
-        4) Completa el formulario y presiona <strong> reporte</strong>.
+        4) Completa el formulario y presiona <strong>Guardar reporte</strong>.
       </p>
 
       <form id="form-reporte">
@@ -258,7 +258,7 @@
           capture="environment"
         />
 
-        <button type="submit" id="btn-" disabled>Guardar reporte</button>
+        <button type="submit" id="btn-guardar" disabled>Guardar reporte</button>
         <p class="small">
           El botón se habilita cuando el sistema obtiene tu ubicación o cuando seleccionas una en el mapa.
         </p>
@@ -279,36 +279,30 @@
   ></script>
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 // =====================================================
 // CONFIGURACIÓN SUPABASE
 // =====================================================
-// 👇 YA CONFIGURASTE ESTO:
 const SUPABASE_URL = "https://lcuhjpstmkaonpbnlpmi.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjdWhqcHN0bWthb25wYm5scG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MTgxODUsImV4cCI6MjA4MDE5NDE4NX0.PXaT-o-7BeV5CtFu1VPSpXL0_MTnzFjraBdYCXSWmcQ";
 
-// crear cliente supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // =====================================================
 // FUNCIÓN PARA GUARDAR EN SUPABASE (con Storage)
 // =====================================================
 async function guardarEnSupabase(feature) {
-
-  // siempre guardamos también el base64
   const fotoDataUrl = feature.properties.foto_dataurl || null;
   let fotoURL = null;
 
   // 1) Subir foto al bucket si existe base64
   if (fotoDataUrl) {
     const fileName = `foto_${Date.now()}.jpg`;
-
     try {
-      // convertir dataURL -> Blob
       const res = await fetch(fotoDataUrl);
       const blob = await res.blob();
 
-      // subir a Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("fotos_reportes")
         .upload(fileName, blob, {
@@ -319,7 +313,6 @@ async function guardarEnSupabase(feature) {
       if (uploadError) {
         console.error("❌ ERROR SUBIENDO FOTO:", uploadError);
       } else {
-        // obtener URL pública oficial
         const { data: publicData } = supabase
           .storage
           .from("fotos_reportes")
@@ -333,7 +326,7 @@ async function guardarEnSupabase(feature) {
     }
   }
 
-  // 2) Insertar reporte en la tabla
+  // 2) Insertar reporte en la tabla (guardamos base64 + url)
   const { data, error } = await supabase
     .from("reportes")
     .insert({
@@ -346,8 +339,8 @@ async function guardarEnSupabase(feature) {
       accesibilidad: feature.properties.accesibilidad,
       descripcion: feature.properties.descripcion,
       fecha: feature.properties.fecha || null,
-      foto_dataurl: fotoDataUrl, // 👈 base64 para el visor
-      foto_url: fotoURL,         // 👈 URL en Storage (opcional)
+      foto_dataurl: fotoDataUrl,
+      foto_url: fotoURL,
       aprobado: false
     });
 
@@ -374,7 +367,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 // CAPA DE REPORTES
 // =====================================================
 let reportes = { type: "FeatureCollection", features: [] };
-let contadorId = 1; // se actualizará con los datos de Supabase
+let contadorId = 1;
 
 const listaReportesDiv = document.getElementById("lista-reportes-items");
 
@@ -387,29 +380,25 @@ let capaReportes = L.geoJSON(null, {
       weight: 1,
       fillOpacity: 0.9
     }),
-onEachFeature: (feature, layer) => {
-  const p = feature.properties;
-  let html = `
-    <b>Tipo de afectación:</b> ${p.tipo_afectacion}<br>
-    <b>Superficie:</b> ${p.superficie}<br>
-    <b>Severidad:</b> ${p.severidad}<br>
-    <b>Iluminación:</b> ${p.iluminacion}<br>
-    <b>Accesibilidad:</b> ${p.accesibilidad}<br>
-    <b>Fecha:</b> ${p.fecha || "-"}<br>
-    <b>Descripción:</b> ${p.descripcion || "-"}
-  `;
+  onEachFeature: (feature, layer) => {
+    const p = feature.properties;
+    let html = `
+      <b>Tipo de afectación:</b> ${p.tipo_afectacion}<br>
+      <b>Superficie:</b> ${p.superficie}<br>
+      <b>Severidad:</b> ${p.severidad}<br>
+      <b>Iluminación:</b> ${p.iluminacion}<br>
+      <b>Accesibilidad:</b> ${p.accesibilidad}<br>
+      <b>Fecha:</b> ${p.fecha || "-"}<br>
+      <b>Descripción:</b> ${p.descripcion || "-"}
+    `;
 
-  // 1º prioridad: base64 (foto_dataurl)
-  if (p.foto_dataurl) {
-    html += `<br><img src="${p.foto_dataurl}" style="max-width:200px; margin-top:4px;">`;
-  }
-  // 2º: URL pública si existe
-  else if (p.foto_url) {
-    html += `<br><img src="${p.foto_url}" style="max-width:200px; margin-top:4px;">`;
-  }
+    // SOLO usamos foto_dataurl para mostrar en el visor
+    if (p.foto_dataurl) {
+      html += `<br><img src="${p.foto_dataurl}" style="max-width:200px; margin-top:4px;">`;
+    }
 
-  layer.bindPopup(html);
-}
+    layer.bindPopup(html);
+  }
 }).addTo(map);
 
 // =====================================================
@@ -442,8 +431,8 @@ async function cargarReportesIniciales() {
         accesibilidad: row.accesibilidad,
         descripcion: row.descripcion,
         fecha: row.fecha,
-        foto_dataurl: row.foto_dataurl, // 👈 importante
-        foto_url: row.foto_url          // 👈 por si algún día usas solo URL
+        foto_dataurl: row.foto_dataurl, // base64 desde BD
+        foto_url: row.foto_url          // solo para revisión en Supabase
       },
       geometry: {
         type: "Point",
@@ -454,13 +443,11 @@ async function cargarReportesIniciales() {
     reportes.features.push(feature);
     capaReportes.addData(feature);
 
-    // añadir también a la lista lateral
     const item = document.createElement("div");
     item.className = "item-reporte";
     item.textContent = `${feature.properties.id_reporte}. ${row.tipo_afectacion} (${row.severidad})`;
     listaReportesDiv.appendChild(item);
 
-    // mantener contadorId por encima del máximo id
     if (row.id >= contadorId) {
       contadorId = row.id + 1;
     }
@@ -469,7 +456,6 @@ async function cargarReportesIniciales() {
   console.log(`✅ Reportes iniciales cargados: ${data.length}`);
 }
 
-// llamar una vez al iniciar
 cargarReportesIniciales();
 
 // =====================================================
@@ -479,7 +465,7 @@ let marcadorTemporal = null;
 
 const latInput = document.getElementById("lat");
 const lngInput = document.getElementById("lng");
-const btnGuardar = document.getElementById("btn-");
+const btnGuardar = document.getElementById("btn-guardar");
 
 function actualizarUbicacion(lat, lng) {
   latInput.value = lat.toFixed(6);
@@ -583,7 +569,6 @@ form.addEventListener("submit", function (e) {
   item.textContent = `${feature.properties.id_reporte}. ${tipo_afectacion} (${severidad})`;
   listaReportesDiv.appendChild(item);
 
-  // guardar en Supabase
   guardarEnSupabase(feature);
 
   form.reset();
@@ -595,37 +580,35 @@ form.addEventListener("submit", function (e) {
 // ESCUCHAR NUEVOS REPORTES EN TIEMPO REAL
 // =====================================================
 supabase
-  .channel('realtime:reportes')
+  .channel("realtime:reportes")
   .on(
-    'postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'reportes' },
+    "postgres_changes",
+    { event: "INSERT", schema: "public", table: "reportes" },
     payload => {
-      console.log('📡 Nuevo reporte recibido en vivo:', payload);
+      console.log("📡 Nuevo reporte recibido en vivo:", payload);
 
       const row = payload.new;
-      if (!row.aprobado) {
-          return;
-      }
+      if (!row.aprobado) return;
 
-    const feature = {
-      type: "Feature",
-      properties: {
-        id_reporte: row.id,
-        tipo_afectacion: row.tipo_afectacion,
-        superficie: row.superficie,
-        severidad: row.severidad,
-        iluminacion: row.iluminacion,
-        accesibilidad: row.accesibilidad,
-        descripcion: row.descripcion,
-        fecha: row.fecha,
-        foto_dataurl: row.foto_dataurl, // 👈
-        foto_url: row.foto_url          // 👈
-      },
-      geometry: {
-        type: "Point",
-        coordinates: [row.lng, row.lat]
-      }
-    };
+      const feature = {
+        type: "Feature",
+        properties: {
+          id_reporte: row.id,
+          tipo_afectacion: row.tipo_afectacion,
+          superficie: row.superficie,
+          severidad: row.severidad,
+          iluminacion: row.iluminacion,
+          accesibilidad: row.accesibilidad,
+          descripcion: row.descripcion,
+          fecha: row.fecha,
+          foto_dataurl: row.foto_dataurl,
+          foto_url: row.foto_url
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [row.lng, row.lat]
+        }
+      };
 
       reportes.features.push(feature);
       capaReportes.addData(feature);
@@ -638,13 +621,5 @@ supabase
   )
   .subscribe();
 </script>
-
-
-
-
-
-
-
-
-
-
+</body>
+</html>
