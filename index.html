@@ -539,4 +539,48 @@ form.addEventListener("submit", function (e) {
   btnGuardar.disabled = true;
   fotoDataURLActual = null;
 });
+
+// =====================================================
+// ESCUCHAR NUEVOS REPORTES EN TIEMPO REAL
+// =====================================================
+supabase
+  .channel('realtime:reportes')
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'reportes' },
+    payload => {
+      console.log('📡 Nuevo reporte recibido en vivo:', payload);
+
+      const row = payload.new;
+
+      const feature = {
+        type: "Feature",
+        properties: {
+          id_reporte: row.id,
+          tipo_afectacion: row.tipo_afectacion,
+          superficie: row.superficie,
+          severidad: row.severidad,
+          iluminacion: row.iluminacion,
+          accesibilidad: row.accesibilidad,
+          descripcion: row.descripcion,
+          fecha: row.fecha,
+          foto_dataurl: row.foto_dataurl
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [row.lng, row.lat]
+        }
+      };
+
+      reportes.features.push(feature);
+      capaReportes.addData(feature);
+
+      const item = document.createElement("div");
+      item.className = "item-reporte";
+      item.textContent = `${row.id}. ${row.tipo_afectacion} (${row.severidad})`;
+      listaReportesDiv.appendChild(item);
+    }
+  )
+  .subscribe();
 </script>
+
