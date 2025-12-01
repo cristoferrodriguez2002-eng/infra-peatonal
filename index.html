@@ -306,7 +306,7 @@ async function guardarEnSupabase(feature) {
       accesibilidad: feature.properties.accesibilidad,
       descripcion: feature.properties.descripcion,
       fecha: feature.properties.fecha || null,
-      foto_dataurl: feature.properties.foto_dataurl || null
+      foto_dataurl: feature.properties.foto_dataurl || null,
       aprobado: false
     });
 
@@ -587,6 +587,7 @@ supabase
   )
   .subscribe();
 </script>
+
 
 
 
