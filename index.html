@@ -370,7 +370,8 @@ let capaReportes = L.geoJSON(null, {
 async function cargarReportesIniciales() {
   const { data, error } = await supabase
     .from("reportes")
-    .select("*");
+    .select("*")
+    .eq("aprobado", true);
 
   if (error) {
     console.error("❌ ERROR SUPABASE (select):", error);
@@ -587,6 +588,7 @@ supabase
   )
   .subscribe();
 </script>
+
 
 
 
