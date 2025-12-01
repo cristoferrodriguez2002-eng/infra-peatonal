@@ -553,6 +553,9 @@ supabase
       console.log('📡 Nuevo reporte recibido en vivo:', payload);
 
       const row = payload.new;
+      if (!row.aprobado) {
+          return;
+      }
 
       const feature = {
         type: "Feature",
@@ -584,5 +587,6 @@ supabase
   )
   .subscribe();
 </script>
+
 
 
