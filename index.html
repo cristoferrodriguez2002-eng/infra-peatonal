@@ -376,7 +376,7 @@ let capaReportes = L.geoJSON(null, {
   pointToLayer: (feature, latlng) =>
     L.circleMarker(latlng, {
       radius: 7,
-      fillColor: getColor(feature.properties.tipo_afectacion),
+      fillColor: getColor(feature.properties.superficie),
       color: "#333",
       weight: 1,
       fillOpacity: 0.9
@@ -494,13 +494,20 @@ if ("geolocation" in navigator) {
 // =====================================================
 // COLORES
 // =====================================================
-function getColor(tipo) {
-  switch (tipo) {
-    case "Vereda dañada": return "#e41a1c";
-    case "Cruce peligroso": return "#377eb8";
-    case "Inundación en vereda": return "#4daf4a";
-    case "Iluminación deficiente": return "#984ea3";
-    default: return "#ff7f00";
+function getColor(superficie) {
+  switch (superficie) {
+    case "Vereda":
+      return "#e41a1c"; // rojo
+    case "Cruce":
+      return "#377eb8"; // azul
+    case "Pasarela":
+      return "#4daf4a"; // verde
+    case "Plaza / área verde":
+      return "#984ea3"; // morado
+    case "Otro":
+      return "#ff7f00"; // naranjo
+    default:
+      return "#999999"; // gris por si llega algo raro
   }
 }
 
@@ -624,4 +631,5 @@ supabase
 </script>
 </body>
 </html>
+
 
