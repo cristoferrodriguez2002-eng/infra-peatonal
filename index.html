@@ -25,6 +25,57 @@
       background: #f5f5f5;
     }
 
+    /* ====== PANTALLA DE BIENVENIDA ====== */
+    #welcome {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1.5rem;
+      background: radial-gradient(circle at top, #1f2937 0, #111827 40%, #020617 100%);
+      color: #f9fafb;
+    }
+
+    #welcome h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.75rem;
+    }
+
+    #welcome p {
+      max-width: 480px;
+      font-size: 0.95rem;
+      margin-bottom: 1.25rem;
+      opacity: 0.9;
+    }
+
+    #btn-empezar {
+      padding: 0.6rem 1.2rem;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #22c55e;
+      color: #022c22;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.3);
+    }
+
+    #btn-empezar:hover {
+      filter: brightness(1.05);
+    }
+
+    #btn-empezar:active {
+      transform: scale(0.98);
+    }
+
+    /* Contenedor de la app (mapa + formulario) oculto al inicio */
+    #app {
+      display: none;
+    }
+
+    /* ====== ESTILOS APP ORIGINAL ====== */
     header {
       padding: 0.75rem 1rem;
       background: #1f2937;
@@ -51,6 +102,7 @@
     #map {
       width: 100%;
       height: 100%;
+      position: relative; /* para posicionar el panel de filtros */
     }
 
     .panel-formulario {
@@ -141,6 +193,45 @@
       border-bottom: 1px dashed #e5e7eb;
     }
 
+    /* ====== PANEL DE FILTROS SOBRE EL MAPA ====== */
+    .filtro-panel {
+      position: absolute;
+      top: 80px;
+      left: 10px;
+      z-index: 2000;
+      background: rgba(255,255,255,0.95);
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+      padding: 0.4rem;
+      font-size: 0.75rem;
+      max-width: 230px;
+    }
+
+    .filtro-panel button {
+      margin: 0;
+      width: 100%;
+      padding: 0.3rem 0.5rem;
+      border-radius: 999px;
+      border: none;
+      background: #111827;
+      color: #f9fafb;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    #filtro-contenido {
+      margin-top: 0.4rem;
+      display: none; /* colapsado por defecto */
+    }
+
+    #filtro-contenido select {
+      width: 100%;
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      margin-bottom: 0.25rem;
+      padding: 0.25rem 0.3rem;
+    }
+
     @media (max-width: 900px) {
       .layout {
         grid-template-columns: 1fr;
@@ -175,101 +266,159 @@
 </head>
 
 <body>
-  <header>
-    <h1>WebGIS - Afectación de infraestructura peatonal</h1>
-    <p>La comunidad reporta problemas en veredas, cruces y accesibilidad.</p>
-  </header>
+  <!-- PANTALLA DE BIENVENIDA -->
+  <div id="welcome">
+    <h1>Infraestructura peatonal en tu ciudad</h1>
+    <p>
+      Ayúdanos a identificar problemas en veredas, cruces y accesibilidad.
+      Tu aporte permite visibilizar riesgos cotidianos y apoyar la toma de decisiones.
+    </p>
+    <button id="btn-empezar">¿Quieres aportar?</button>
+  </div>
 
-  <div class="layout">
-    <!-- Mapa -->
-    <div id="map"></div>
+  <!-- APP PRINCIPAL (OCULTA AL INICIO) -->
+  <div id="app">
+    <header>
+      <h1>WebGIS - Afectación de infraestructura peatonal</h1>
+      <p>La comunidad reporta problemas en veredas, cruces y accesibilidad.</p>
+    </header>
 
-    <!-- Formulario -->
-    <aside class="panel-formulario">
-      <h2>Nuevo reporte ciudadano</h2>
-      <p class="help">
-        1) Al abrir el visor se intentará usar tu ubicación actual automáticamente.<br />
-        2) Si no funciona o prefieres otro lugar, toca el mapa para marcar la ubicación del problema.<br />
-        3) Puedes tomar una foto o subirla desde tu galería.<br />
-        4) Completa el formulario y presiona <strong>Guardar reporte</strong>.
-      </p>
+    <div class="layout">
+      <!-- Mapa -->
+      <div id="map">
+        <!-- PANEL DE FILTROS -->
+        <div class="filtro-panel">
+          <button id="btn-filtro-toggle">Filtros</button>
+          <div id="filtro-contenido">
+            <select id="filtro-tipo-afectacion">
+              <option value="">Tipo de afectación (todos)</option>
+              <option value="Vereda en mal estado">Vereda en mal estado</option>
+              <option value="Ausencia de vereda">Ausencia de vereda</option>
+              <option value="Inundación en vereda">Inundación en vereda</option>
+              <option value="Cruce peligroso">Cruce peligroso</option>
+              <option value="Iluminación deficiente">Iluminación deficiente</option>
+              <option value="Otro">Otro</option>
+            </select>
 
-      <form id="form-reporte">
-        <label>Coordenadas (GPS o clic en el mapa):</label>
-        <div class="fila-coords">
-          <input type="text" id="lat" placeholder="Latitud" readonly />
-          <input type="text" id="lng" placeholder="Longitud" readonly />
+            <select id="filtro-superficie">
+              <option value="">Tipo de superficie (todas)</option>
+              <option value="Vereda">Vereda</option>
+              <option value="Cruce">Cruce</option>
+              <option value="Pasarela">Pasarela</option>
+              <option value="Plaza / área verde">Plaza / área verde</option>
+              <option value="Otro">Otro</option>
+            </select>
+
+            <select id="filtro-severidad">
+              <option value="">Severidad (todas)</option>
+              <option value="Baja">Baja</option>
+              <option value="Media">Media</option>
+              <option value="Alta">Alta</option>
+            </select>
+
+            <select id="filtro-iluminacion">
+              <option value="">Iluminación (todas)</option>
+              <option value="Buena">Buena</option>
+              <option value="Regular">Regular</option>
+              <option value="Mala">Mala</option>
+            </select>
+
+            <select id="filtro-accesibilidad">
+              <option value="">Accesibilidad (todas)</option>
+              <option value="Sí">Sí</option>
+              <option value="No">No</option>
+            </select>
+          </div>
         </div>
-
-        <label for="tipo_afectacion">Tipo de afectación:</label>
-        <select id="tipo_afectacion" required>
-          <option value="">Selecciona una opción</option>
-          <option value="Vereda en mal estado">Vereda en mal estado</option>
-          <option value="Ausencia de vereda">Ausencia de vereda</option>
-          <option value="Inundación en vereda">Inundación en vereda</option>
-          <option value="Cruce peligroso">Cruce peligroso</option>
-          <option value="Iluminación deficiente">Iluminación deficiente</option>
-          <option value="Otro">Otro</option>
-        </select>
-
-        <label for="superficie">Tipo de superficie:</label>
-        <select id="superficie" required>
-          <option value="">Selecciona una opción</option>
-          <option value="Vereda">Vereda</option>
-          <option value="Cruce">Cruce</option>
-          <option value="Pasarela">Pasarela</option>
-          <option value="Plaza / área verde">Plaza / área verde</option>
-          <option value="Otro">Otro</option>
-        </select>
-
-        <label for="severidad">Severidad del problema:</label>
-        <select id="severidad" required>
-          <option value="">Selecciona una opción</option>
-          <option value="Baja">Baja</option>
-          <option value="Media">Media</option>
-          <option value="Alta">Alta</option>
-        </select>
-
-        <label for="iluminacion">Iluminación del sector:</label>
-        <select id="iluminacion" required>
-          <option value="">Selecciona una opción</option>
-          <option value="Buena">Buena</option>
-          <option value="Regular">Regular</option>
-          <option value="Mala">Mala</option>
-        </select>
-
-        <label for="accesibilidad">¿Es accesible para silla de ruedas / coche?</label>
-        <select id="accesibilidad" required>
-          <option value="">Selecciona una opción</option>
-          <option value="Sí">Sí</option>
-          <option value="No">No</option>
-        </select>
-
-        <label for="descripcion">Descripción del problema:</label>
-        <textarea id="descripcion" placeholder="Ej: Vereda rota cerca de colegio, personas mayores tropiezan..."></textarea>
-
-        <label for="fecha">Fecha (opcional):</label>
-        <input type="date" id="fecha" />
-
-        <label for="foto">Fotografía (opcional):</label>
-        <input
-          type="file"
-          id="foto"
-          accept="image/*"
-          capture="environment"
-        />
-
-        <button type="submit" id="btn-guardar" disabled>Guardar reporte</button>
-        <p class="small">
-          El botón se habilita cuando el sistema obtiene tu ubicación o cuando seleccionas una en el mapa.
-        </p>
-      </form>
-
-      <div class="lista-reportes">
-        <strong>Reportes registrados en esta sesión:</strong>
-        <div id="lista-reportes-items"></div>
       </div>
-    </aside>
+
+      <!-- Formulario -->
+      <aside class="panel-formulario">
+        <h2>Nuevo reporte ciudadano</h2>
+        <p class="help">
+          1) Al abrir el visor se intentará usar tu ubicación actual automáticamente.<br />
+          2) Si no funciona o prefieres otro lugar, toca el mapa para marcar la ubicación del problema.<br />
+          3) Puedes tomar una foto o subirla desde tu galería.<br />
+          4) Completa el formulario y presiona <strong>Guardar reporte</strong>.
+        </p>
+
+        <form id="form-reporte">
+          <label>Coordenadas (GPS o clic en el mapa):</label>
+          <div class="fila-coords">
+            <input type="text" id="lat" placeholder="Latitud" readonly />
+            <input type="text" id="lng" placeholder="Longitud" readonly />
+          </div>
+
+          <label for="tipo_afectacion">Tipo de afectación:</label>
+          <select id="tipo_afectacion" required>
+            <option value="">Selecciona una opción</option>
+            <option value="Vereda en mal estado">Vereda en mal estado</option>
+            <option value="Ausencia de vereda">Ausencia de vereda</option>
+            <option value="Inundación en vereda">Inundación en vereda</option>
+            <option value="Cruce peligroso">Cruce peligroso</option>
+            <option value="Iluminación deficiente">Iluminación deficiente</option>
+            <option value="Otro">Otro</option>
+          </select>
+
+          <label for="superficie">Tipo de superficie:</label>
+          <select id="superficie" required>
+            <option value="">Selecciona una opción</option>
+            <option value="Vereda">Vereda</option>
+            <option value="Cruce">Cruce</option>
+            <option value="Pasarela">Pasarela</option>
+            <option value="Plaza / área verde">Plaza / área verde</option>
+            <option value="Otro">Otro</option>
+          </select>
+
+          <label for="severidad">Severidad del problema:</label>
+          <select id="severidad" required>
+            <option value="">Selecciona una opción</option>
+            <option value="Baja">Baja</option>
+            <option value="Media">Media</option>
+            <option value="Alta">Alta</option>
+          </select>
+
+          <label for="iluminacion">Iluminación del sector:</label>
+          <select id="iluminacion" required>
+            <option value="">Selecciona una opción</option>
+            <option value="Buena">Buena</option>
+            <option value="Regular">Regular</option>
+            <option value="Mala">Mala</option>
+          </select>
+
+          <label for="accesibilidad">¿Es accesible para silla de ruedas / coche?</label>
+          <select id="accesibilidad" required>
+            <option value="">Selecciona una opción</option>
+            <option value="Sí">Sí</option>
+            <option value="No">No</option>
+          </select>
+
+          <label for="descripcion">Descripción del problema:</label>
+          <textarea id="descripcion" placeholder="Ej: Vereda rota cerca de colegio, personas mayores tropiezan..."></textarea>
+
+          <label for="fecha">Fecha (opcional):</label>
+          <input type="date" id="fecha" />
+
+          <label for="foto">Fotografía (opcional):</label>
+          <input
+            type="file"
+            id="foto"
+            accept="image/*"
+            capture="environment"
+          />
+
+          <button type="submit" id="btn-guardar" disabled>Guardar reporte</button>
+          <p class="small">
+            El botón se habilita cuando el sistema obtiene tu ubicación o cuando seleccionas una en el mapa.
+          </p>
+        </form>
+
+        <div class="lista-reportes">
+          <strong>Reportes registrados en esta sesión:</strong>
+          <div id="lista-reportes-items"></div>
+        </div>
+      </aside>
+    </div>
   </div>
 
   <!-- Leaflet JS -->
@@ -364,6 +513,13 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors"
 }).addTo(map);
 
+// Evitar que los clics/scroll del panel de filtros afecten al mapa
+const filtroPanel = document.querySelector(".filtro-panel");
+if (filtroPanel) {
+  L.DomEvent.disableClickPropagation(filtroPanel);
+  L.DomEvent.disableScrollPropagation(filtroPanel);
+}
+
 // =====================================================
 // CAPA DE REPORTES
 // =====================================================
@@ -403,6 +559,48 @@ let capaReportes = L.geoJSON(null, {
 }).addTo(map);
 
 // =====================================================
+// FILTROS (UI + LÓGICA)
+// =====================================================
+const filtroTipo = document.getElementById("filtro-tipo-afectacion");
+const filtroSuperficie = document.getElementById("filtro-superficie");
+const filtroSeveridad = document.getElementById("filtro-severidad");
+const filtroIluminacion = document.getElementById("filtro-iluminacion");
+const filtroAccesibilidad = document.getElementById("filtro-accesibilidad");
+
+function aplicarFiltros() {
+  const vTipo = filtroTipo.value;
+  const vSup = filtroSuperficie.value;
+  const vSev = filtroSeveridad.value;
+  const vIlu = filtroIluminacion.value;
+  const vAcc = filtroAccesibilidad.value;
+
+  capaReportes.clearLayers();
+
+  reportes.features.forEach(f => {
+    const p = f.properties;
+    if (vTipo && p.tipo_afectacion !== vTipo) return;
+    if (vSup && p.superficie !== vSup) return;
+    if (vSev && p.severidad !== vSev) return;
+    if (vIlu && p.iluminacion !== vIlu) return;
+    if (vAcc && p.accesibilidad !== vAcc) return;
+    capaReportes.addData(f);
+  });
+}
+
+[filtroTipo, filtroSuperficie, filtroSeveridad, filtroIluminacion, filtroAccesibilidad]
+  .forEach(sel => sel.addEventListener("change", aplicarFiltros));
+
+// toggle del panel
+const btnFiltroToggle = document.getElementById("btn-filtro-toggle");
+const filtroContenido = document.getElementById("filtro-contenido");
+btnFiltroToggle.addEventListener("click", () => {
+  filtroContenido.style.display =
+    filtroContenido.style.display === "none" || filtroContenido.style.display === ""
+      ? "block"
+      : "none";
+});
+
+// =====================================================
 // CARGAR REPORTES EXISTENTES DESDE SUPABASE
 // =====================================================
 async function cargarReportesIniciales() {
@@ -432,8 +630,8 @@ async function cargarReportesIniciales() {
         accesibilidad: row.accesibilidad,
         descripcion: row.descripcion,
         fecha: row.fecha,
-        foto_dataurl: row.foto_dataurl, // base64 desde BD
-        foto_url: row.foto_url          // solo para revisión en Supabase
+        foto_dataurl: row.foto_dataurl,
+        foto_url: row.foto_url
       },
       geometry: {
         type: "Point",
@@ -442,7 +640,6 @@ async function cargarReportesIniciales() {
     };
 
     reportes.features.push(feature);
-    capaReportes.addData(feature);
 
     const item = document.createElement("div");
     item.className = "item-reporte";
@@ -454,6 +651,7 @@ async function cargarReportesIniciales() {
     }
   });
 
+  aplicarFiltros(); // muestra según filtros actuales (o todos)
   console.log(`✅ Reportes iniciales cargados: ${data.length}`);
 }
 
@@ -501,9 +699,9 @@ function getColor(superficie) {
     case "Cruce":
       return "#377eb8"; // azul
     case "Pasarela":
-      return "#984ea3"; // verde
+      return "#984ea3"; // morado
     case "Plaza / área verde":
-      return "#4daf4a"; // morado
+      return "#4daf4a"; // verde
     case "Otro":
       return "#ff7f00"; // naranjo
     default:
@@ -570,12 +768,13 @@ form.addEventListener("submit", function (e) {
   };
 
   reportes.features.push(feature);
-  capaReportes.addData(feature);
 
   const item = document.createElement("div");
   item.className = "item-reporte";
   item.textContent = `${feature.properties.id_reporte}. ${tipo_afectacion} (${severidad})`;
   listaReportesDiv.appendChild(item);
+
+  aplicarFiltros(); // se actualiza el mapa con filtros activos
 
   guardarEnSupabase(feature);
 
@@ -619,18 +818,33 @@ supabase
       };
 
       reportes.features.push(feature);
-      capaReportes.addData(feature);
 
       const item = document.createElement("div");
       item.className = "item-reporte";
       item.textContent = `${row.id}. ${row.tipo_afectacion} (${row.severidad})`;
       listaReportesDiv.appendChild(item);
+
+      aplicarFiltros();
     }
   )
   .subscribe();
+
+// =====================================================
+// LÓGICA PARA MOSTRAR LA APP LUEGO DE "¿QUIERES APORTAR?"
+// =====================================================
+const welcomeDiv = document.getElementById("welcome");
+const appDiv = document.getElementById("app");
+const btnEmpezar = document.getElementById("btn-empezar");
+
+btnEmpezar.addEventListener("click", () => {
+  welcomeDiv.style.display = "none";
+  appDiv.style.display = "block";
+
+  // Arregla el tamaño del mapa cuando se muestra la app
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 300);
+});
 </script>
 </body>
 </html>
-
-
-
