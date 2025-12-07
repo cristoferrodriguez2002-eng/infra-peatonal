@@ -232,6 +232,37 @@
       padding: 0.25rem 0.3rem;
     }
 
+    /* ====== PANEL ESTADÍSTICAS ====== */
+    .panel-estadisticas {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.75rem;
+      background: #f9fafb;
+      font-size: 0.8rem;
+    }
+
+    .panel-estadisticas h2 {
+      margin: 0 0 0.25rem;
+      font-size: 0.95rem;
+    }
+
+    .panel-estadisticas select {
+      width: 100%;
+      padding: 0.3rem 0.4rem;
+      font-size: 0.8rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .panel-estadisticas ul {
+      margin: 0;
+      padding-left: 1.1rem;
+    }
+
+    .panel-estadisticas li {
+      margin-bottom: 0.15rem;
+    }
+
     @media (max-width: 900px) {
       .layout {
         grid-template-columns: 1fr;
@@ -332,8 +363,21 @@
         </div>
       </div>
 
-      <!-- Formulario -->
+      <!-- Formulario + estadísticas -->
       <aside class="panel-formulario">
+
+        <!-- Panel de estadísticas -->
+        <div class="panel-estadisticas">
+          <h2>Estadísticas</h2>
+          <label for="select-comuna">Comuna:</label>
+          <select id="select-comuna">
+            <option value="">Todas las comunas</option>
+          </select>
+          <div id="estadisticas-contenido">
+            <p style="margin:0.25rem 0 0;">Aún no hay datos para mostrar.</p>
+          </div>
+        </div>
+
         <h2>Nuevo reporte ciudadano</h2>
         <p class="help">
           1) Al abrir el visor se intentará usar tu ubicación actual automáticamente.<br />
@@ -429,6 +473,8 @@
   ></script>
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Turf JS -->
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
 <script>
 // =====================================================
@@ -438,6 +484,66 @@ const SUPABASE_URL = "https://lcuhjpstmkaonpbnlpmi.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjdWhqcHN0bWthb25wYm5scG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MTgxODUsImV4cCI6MjA4MDE5NDE4NX0.PXaT-o-7BeV5CtFu1VPSpXL0_MTnzFjraBdYCXSWmcQ";
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// =====================================================
+// COMUNAS DE CHILE (MULTI-GEOJSON)
+// =====================================================
+let comunasGeojson = { type: "FeatureCollection", features: [] };
+
+const archivosComunas = [
+  "region_1.geojson",
+  "region_2.geojson",
+  "region_3.geojson",
+  "region_4.geojson",
+  "region_5.geojson",
+  "region_6.geojson",
+  "region_7.geojson",
+  "region_8.geojson",
+  "region_9.geojson",
+  "region_10.geojson",
+  "region_11_1.geojson",
+  "region_11_2.geojson",
+  "region_12_1.geojson",
+  "region_12_2.geojson",
+  "region_13.geojson",
+  "region_14.geojson",
+  "region_15.geojson",
+  "region_16.geojson"
+];
+
+// Cargar todas las comunas y luego los reportes
+function cargarComunasYLuegoReportes() {
+  Promise.all(
+    archivosComunas.map(url => fetch(url).then(r => r.json()))
+  )
+  .then(datasets => {
+    datasets.forEach(geo => {
+      if (geo && geo.features) {
+        comunasGeojson.features.push(...geo.features);
+      }
+    });
+    console.log("✅ Comunas cargadas, total:", comunasGeojson.features.length);
+    cargarReportesIniciales();
+  })
+  .catch(err => {
+    console.error("❌ Error cargando comunas:", err);
+    cargarReportesIniciales(); // igual cargamos reportes, sin comuna precisa
+  });
+}
+
+// Obtener comuna desde lat/lng (fallback Natales)
+function obtenerComuna(lat, lng) {
+  if (!comunasGeojson || !comunasGeojson.features.length) return "Natales";
+
+  const punto = turf.point([lng, lat]);
+
+  for (const feature of comunasGeojson.features) {
+    if (turf.booleanPointInPolygon(punto, feature)) {
+      return feature.properties.Comuna || "Natales";
+    }
+  }
+  return "Natales";
+}
 
 // =====================================================
 // FUNCIÓN PARA GUARDAR EN SUPABASE (con Storage)
@@ -476,7 +582,7 @@ async function guardarEnSupabase(feature) {
     }
   }
 
-  // 2) Insertar reporte en la tabla (guardamos base64 + url)
+  // 2) Insertar reporte
   const { data, error } = await supabase
     .from("reportes")
     .insert({
@@ -491,6 +597,7 @@ async function guardarEnSupabase(feature) {
       fecha: feature.properties.fecha || null,
       foto_dataurl: fotoDataUrl,
       foto_url: fotoURL,
+      comuna: feature.properties.comuna || null,
       aprobado: false
     });
 
@@ -521,7 +628,7 @@ if (filtroPanel) {
 }
 
 // =====================================================
-// CAPA DE REPORTES
+// CAPA DE REPORTES + FILTROS
 // =====================================================
 let reportes = { type: "FeatureCollection", features: [] };
 let contadorId = 1;
@@ -545,11 +652,11 @@ let capaReportes = L.geoJSON(null, {
       <b>Severidad:</b> ${p.severidad}<br>
       <b>Iluminación:</b> ${p.iluminacion}<br>
       <b>Accesibilidad:</b> ${p.accesibilidad}<br>
+      <b>Comuna:</b> ${p.comuna || "-"}<br>
       <b>Fecha:</b> ${p.fecha || "-"}<br>
       <b>Descripción:</b> ${p.descripcion || "-"}
     `;
 
-    // SOLO usamos foto_dataurl para mostrar en el visor
     if (p.foto_dataurl) {
       html += `<br><img src="${p.foto_dataurl}" style="max-width:200px; margin-top:4px;">`;
     }
@@ -558,9 +665,7 @@ let capaReportes = L.geoJSON(null, {
   }
 }).addTo(map);
 
-// =====================================================
-// FILTROS (UI + LÓGICA)
-// =====================================================
+// FILTROS
 const filtroTipo = document.getElementById("filtro-tipo-afectacion");
 const filtroSuperficie = document.getElementById("filtro-superficie");
 const filtroSeveridad = document.getElementById("filtro-severidad");
@@ -588,7 +693,10 @@ function aplicarFiltros() {
 }
 
 [filtroTipo, filtroSuperficie, filtroSeveridad, filtroIluminacion, filtroAccesibilidad]
-  .forEach(sel => sel.addEventListener("change", aplicarFiltros));
+  .forEach(sel => sel.addEventListener("change", () => {
+    aplicarFiltros();
+    actualizarEstadisticas();
+  }));
 
 // toggle del panel
 const btnFiltroToggle = document.getElementById("btn-filtro-toggle");
@@ -599,6 +707,119 @@ btnFiltroToggle.addEventListener("click", () => {
       ? "block"
       : "none";
 });
+
+// =====================================================
+// ESTADÍSTICAS POR COMUNA
+// =====================================================
+const selectComuna = document.getElementById("select-comuna");
+const statsDiv = document.getElementById("estadisticas-contenido");
+
+function actualizarOpcionesComuna() {
+  if (!selectComuna) return;
+
+  const comunasSet = new Set();
+  reportes.features.forEach(f => {
+    if (f.properties.comuna) comunasSet.add(f.properties.comuna);
+  });
+
+  const seleccionActual = selectComuna.value;
+
+  // borrar opciones excepto "Todas"
+  while (selectComuna.options.length > 1) {
+    selectComuna.remove(1);
+  }
+
+  Array.from(comunasSet).sort().forEach(nombre => {
+    const opt = document.createElement("option");
+    opt.value = nombre;
+    opt.textContent = nombre;
+    selectComuna.appendChild(opt);
+  });
+
+  if (comunasSet.has(seleccionActual)) {
+    selectComuna.value = seleccionActual;
+  } else {
+    selectComuna.value = "";
+  }
+}
+
+function calcularEstadisticas(comunaFiltro) {
+  const feats = reportes.features.filter(f => {
+    if (!comunaFiltro) return true;
+    return f.properties.comuna === comunaFiltro;
+  });
+
+  const total = feats.length;
+  if (!total) return { total: 0 };
+
+  let conFoto = 0;
+  const sev = { Baja: 0, Media: 0, Alta: 0 };
+  let noAccesible = 0;
+  let ilumMala = 0;
+  let puntosCriticos = 0; // Alta + No + Mala
+
+  feats.forEach(f => {
+    const p = f.properties;
+    if (p.foto_dataurl || p.foto_url) conFoto++;
+
+    if (sev[p.severidad] !== undefined) sev[p.severidad]++;
+
+    if (p.accesibilidad === "No") noAccesible++;
+    if (p.iluminacion === "Mala") ilumMala++;
+
+    if (p.severidad === "Alta" && p.accesibilidad === "No" && p.iluminacion === "Mala") {
+      puntosCriticos++;
+    }
+  });
+
+  const pct = v => ((v / total) * 100).toFixed(1);
+
+  return {
+    total,
+    conFoto,
+    sev,
+    noAccesible,
+    ilumMala,
+    puntosCriticos,
+    pctConFoto: pct(conFoto),
+    pctNoAccesible: pct(noAccesible),
+    pctIlumMala: pct(ilumMala),
+    pctSev: {
+      Baja: pct(sev.Baja),
+      Media: pct(sev.Media),
+      Alta: pct(sev.Alta)
+    }
+  };
+}
+
+function actualizarEstadisticas() {
+  if (!statsDiv) return;
+
+  const comunaSel = selectComuna ? selectComuna.value : "";
+  const stats = calcularEstadisticas(comunaSel);
+
+  if (!stats.total) {
+    statsDiv.innerHTML = `<p style="margin:0.25rem 0 0;">Aún no hay datos para mostrar.</p>`;
+    return;
+  }
+
+  statsDiv.innerHTML = `
+    <ul>
+      <li><b>Total de reportes:</b> ${stats.total}</li>
+      <li><b>Con fotografía:</b> ${stats.conFoto} (${stats.pctConFoto}%)</li>
+      <li><b>Severidad:</b> Baja ${stats.pctSev.Baja}%, Media ${stats.pctSev.Media}%, Alta ${stats.pctSev.Alta}%</li>
+      <li><b>No accesible silla/coche:</b> ${stats.noAccesible} (${stats.pctNoAccesible}%)</li>
+      <li><b>Iluminación mala:</b> ${stats.ilumMala} (${stats.pctIlumMala}%)</li>
+      <li><b>Puntos críticos (Alta + No + Mala):</b> ${stats.puntosCriticos}</li>
+    </ul>
+  `;
+}
+
+if (selectComuna) {
+  selectComuna.addEventListener("change", () => {
+    actualizarEstadisticas();
+  });
+}
 
 // =====================================================
 // CARGAR REPORTES EXISTENTES DESDE SUPABASE
@@ -619,6 +840,8 @@ async function cargarReportesIniciales() {
   data.forEach(row => {
     if (row.lat == null || row.lng == null) return;
 
+    const comuna = row.comuna || obtenerComuna(row.lat, row.lng);
+
     const feature = {
       type: "Feature",
       properties: {
@@ -631,7 +854,8 @@ async function cargarReportesIniciales() {
         descripcion: row.descripcion,
         fecha: row.fecha,
         foto_dataurl: row.foto_dataurl,
-        foto_url: row.foto_url
+        foto_url: row.foto_url,
+        comuna: comuna
       },
       geometry: {
         type: "Point",
@@ -651,11 +875,12 @@ async function cargarReportesIniciales() {
     }
   });
 
-  aplicarFiltros(); // muestra según filtros actuales (o todos)
+  aplicarFiltros();
+  actualizarOpcionesComuna();
+  actualizarEstadisticas();
+
   console.log(`✅ Reportes iniciales cargados: ${data.length}`);
 }
-
-cargarReportesIniciales();
 
 // =====================================================
 // UBICACIÓN Y CLIC EN EL MAPA
@@ -705,7 +930,7 @@ function getColor(superficie) {
     case "Otro":
       return "#ff7f00"; // naranjo
     default:
-      return "#999999"; // gris por si llega algo raro
+      return "#999999"; // gris
   }
 }
 
@@ -747,6 +972,7 @@ form.addEventListener("submit", function (e) {
 
   const lat = parseFloat(latInput.value);
   const lng = parseFloat(lngInput.value);
+  const comuna = obtenerComuna(lat, lng);
 
   const feature = {
     type: "Feature",
@@ -759,7 +985,8 @@ form.addEventListener("submit", function (e) {
       accesibilidad,
       descripcion,
       fecha,
-      foto_dataurl: fotoDataURLActual
+      foto_dataurl: fotoDataURLActual,
+      comuna: comuna
     },
     geometry: {
       type: "Point",
@@ -774,7 +1001,9 @@ form.addEventListener("submit", function (e) {
   item.textContent = `${feature.properties.id_reporte}. ${tipo_afectacion} (${severidad})`;
   listaReportesDiv.appendChild(item);
 
-  aplicarFiltros(); // se actualiza el mapa con filtros activos
+  aplicarFiltros();
+  actualizarOpcionesComuna();
+  actualizarEstadisticas();
 
   guardarEnSupabase(feature);
 
@@ -797,6 +1026,8 @@ supabase
       const row = payload.new;
       if (!row.aprobado) return;
 
+      const comuna = row.comuna || obtenerComuna(row.lat, row.lng);
+
       const feature = {
         type: "Feature",
         properties: {
@@ -809,7 +1040,8 @@ supabase
           descripcion: row.descripcion,
           fecha: row.fecha,
           foto_dataurl: row.foto_dataurl,
-          foto_url: row.foto_url
+          foto_url: row.foto_url,
+          comuna: comuna
         },
         geometry: {
           type: "Point",
@@ -825,6 +1057,8 @@ supabase
       listaReportesDiv.appendChild(item);
 
       aplicarFiltros();
+      actualizarOpcionesComuna();
+      actualizarEstadisticas();
     }
   )
   .subscribe();
@@ -840,11 +1074,13 @@ btnEmpezar.addEventListener("click", () => {
   welcomeDiv.style.display = "none";
   appDiv.style.display = "block";
 
-  // Arregla el tamaño del mapa cuando se muestra la app
   setTimeout(() => {
     map.invalidateSize();
   }, 300);
 });
+
+// Iniciar: cargar comunas y luego reportes
+cargarComunasYLuegoReportes();
 </script>
 </body>
 </html>
