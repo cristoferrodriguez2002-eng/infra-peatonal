@@ -440,8 +440,7 @@
           <label for="descripcion">Descripción del problema:</label>
           <textarea id="descripcion" placeholder="Ej: Vereda rota cerca de colegio, personas mayores tropiezan..."></textarea>
 
-          <label for="fecha">Fecha (opcional):</label>
-          <input type="date" id="fecha" />
+          <!-- Campo fecha eliminado: ahora se genera automáticamente en JS -->
 
           <label for="foto">Fotografía (opcional):</label>
           <input
@@ -594,7 +593,7 @@ async function guardarEnSupabase(feature) {
       iluminacion: feature.properties.iluminacion,
       accesibilidad: feature.properties.accesibilidad,
       descripcion: feature.properties.descripcion,
-      fecha: feature.properties.fecha || null,
+      fecha: feature.properties.fecha || null, // ahora viene siempre desde JS
       foto_dataurl: fotoDataUrl,
       foto_url: fotoURL,
       comuna: feature.properties.comuna || null,
@@ -692,11 +691,16 @@ function aplicarFiltros() {
   });
 }
 
-[filtroTipo, filtroSuperficie, filtroSeveridad, filtroIluminacion, filtroAccesibilidad]
-  .forEach(sel => sel.addEventListener("change", () => {
-    aplicarFiltros();
-    actualizarEstadisticas();
-  }));
+[
+  filtroTipo,
+  filtroSuperficie,
+  filtroSeveridad,
+  filtroIluminacion,
+  filtroAccesibilidad
+].forEach(sel => sel.addEventListener("change", () => {
+  aplicarFiltros();
+  actualizarEstadisticas();
+}));
 
 // toggle del panel
 const btnFiltroToggle = document.getElementById("btn-filtro-toggle");
@@ -963,7 +967,6 @@ form.addEventListener("submit", function (e) {
   const iluminacion = document.getElementById("iluminacion").value;
   const accesibilidad = document.getElementById("accesibilidad").value;
   const descripcion = document.getElementById("descripcion").value;
-  const fecha = document.getElementById("fecha").value;
 
   if (!tipo_afectacion || !superficie || !severidad || !iluminacion || !accesibilidad) {
     alert("Completa todos los campos obligatorios.");
@@ -973,6 +976,10 @@ form.addEventListener("submit", function (e) {
   const lat = parseFloat(latInput.value);
   const lng = parseFloat(lngInput.value);
   const comuna = obtenerComuna(lat, lng);
+
+  // Fecha automática (YYYY-MM-DD)
+  const hoy = new Date();
+  const fecha = hoy.toISOString().slice(0, 10);
 
   const feature = {
     type: "Feature",
@@ -1084,4 +1091,3 @@ cargarComunasYLuegoReportes();
 </script>
 </body>
 </html>
-
