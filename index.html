@@ -181,18 +181,6 @@
       margin-top: 0.25rem;
     }
 
-    .lista-reportes {
-      margin-top: 0.75rem;
-      border-top: 1px solid #e5e7eb;
-      padding-top: 0.5rem;
-    }
-
-    .item-reporte {
-      font-size: 0.8rem;
-      padding: 0.25rem 0;
-      border-bottom: 1px dashed #e5e7eb;
-    }
-
     /* ====== PANEL DE FILTROS SOBRE EL MAPA ====== */
     .filtro-panel {
       position: absolute;
@@ -327,7 +315,6 @@
               <option value="Ausencia de vereda">Ausencia de vereda</option>
               <option value="Inundación en vereda">Inundación en vereda</option>
               <option value="Cruce peligroso">Cruce peligroso</option>
-              <option value="Iluminación deficiente">Iluminación deficiente</option>
               <option value="Otro">Otro</option>
             </select>
 
@@ -440,7 +427,7 @@
           <label for="descripcion">Descripción del problema:</label>
           <textarea id="descripcion" placeholder="Ej: Vereda rota cerca de colegio, personas mayores tropiezan..."></textarea>
 
-          <!-- Campo fecha eliminado: ahora se genera automáticamente en JS -->
+          <!-- Fecha automática (no se pregunta en el formulario) -->
 
           <label for="foto">Fotografía (opcional):</label>
           <input
@@ -455,11 +442,6 @@
             El botón se habilita cuando el sistema obtiene tu ubicación o cuando seleccionas una en el mapa.
           </p>
         </form>
-
-        <div class="lista-reportes">
-          <strong>Reportes registrados en esta sesión:</strong>
-          <div id="lista-reportes-items"></div>
-        </div>
       </aside>
     </div>
   </div>
@@ -593,7 +575,7 @@ async function guardarEnSupabase(feature) {
       iluminacion: feature.properties.iluminacion,
       accesibilidad: feature.properties.accesibilidad,
       descripcion: feature.properties.descripcion,
-      fecha: feature.properties.fecha || null, // ahora viene siempre desde JS
+      fecha: feature.properties.fecha || null,
       foto_dataurl: fotoDataUrl,
       foto_url: fotoURL,
       comuna: feature.properties.comuna || null,
@@ -631,8 +613,6 @@ if (filtroPanel) {
 // =====================================================
 let reportes = { type: "FeatureCollection", features: [] };
 let contadorId = 1;
-
-const listaReportesDiv = document.getElementById("lista-reportes-items");
 
 let capaReportes = L.geoJSON(null, {
   pointToLayer: (feature, latlng) =>
@@ -869,11 +849,6 @@ async function cargarReportesIniciales() {
 
     reportes.features.push(feature);
 
-    const item = document.createElement("div");
-    item.className = "item-reporte";
-    item.textContent = `${feature.properties.id_reporte}. ${row.tipo_afectacion} (${row.severidad})`;
-    listaReportesDiv.appendChild(item);
-
     if (row.id >= contadorId) {
       contadorId = row.id + 1;
     }
@@ -1003,11 +978,6 @@ form.addEventListener("submit", function (e) {
 
   reportes.features.push(feature);
 
-  const item = document.createElement("div");
-  item.className = "item-reporte";
-  item.textContent = `${feature.properties.id_reporte}. ${tipo_afectacion} (${severidad})`;
-  listaReportesDiv.appendChild(item);
-
   aplicarFiltros();
   actualizarOpcionesComuna();
   actualizarEstadisticas();
@@ -1057,11 +1027,6 @@ supabase
       };
 
       reportes.features.push(feature);
-
-      const item = document.createElement("div");
-      item.className = "item-reporte";
-      item.textContent = `${row.id}. ${row.tipo_afectacion} (${row.severidad})`;
-      listaReportesDiv.appendChild(item);
 
       aplicarFiltros();
       actualizarOpcionesComuna();
