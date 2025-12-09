@@ -251,6 +251,12 @@
       margin-bottom: 0.15rem;
     }
 
+    #grafico-severidad {
+      margin-top: 0.5rem;
+      max-width: 260px;
+      max-height: 260px;
+    }
+
     @media (max-width: 900px) {
       .layout {
         grid-template-columns: 1fr;
@@ -360,9 +366,14 @@
           <select id="select-comuna">
             <option value="">Todas las comunas</option>
           </select>
+
+          <!-- Texto de estadísticas -->
           <div id="estadisticas-contenido">
             <p style="margin:0.25rem 0 0;">Aún no hay datos para mostrar.</p>
           </div>
+
+          <!-- Gráfico de torta de severidades -->
+          <canvas id="grafico-severidad"></canvas>
         </div>
 
         <h2>Nuevo reporte ciudadano</h2>
@@ -452,10 +463,15 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
+
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <!-- Turf JS -->
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+  <!-- Chart.js para el gráfico de torta -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
 // =====================================================
@@ -693,10 +709,11 @@ btnFiltroToggle.addEventListener("click", () => {
 });
 
 // =====================================================
-// ESTADÍSTICAS POR COMUNA
+// ESTADÍSTICAS POR COMUNA + GRÁFICO DE TORTA
 // =====================================================
 const selectComuna = document.getElementById("select-comuna");
 const statsDiv = document.getElementById("estadisticas-contenido");
+let severidadChart = null; // gráfico global
 
 function actualizarOpcionesComuna() {
   if (!selectComuna) return;
@@ -784,9 +801,15 @@ function actualizarEstadisticas() {
 
   if (!stats.total) {
     statsDiv.innerHTML = `<p style="margin:0.25rem 0 0;">Aún no hay datos para mostrar.</p>`;
+    // limpiar gráfico si existe
+    if (severidadChart) {
+      severidadChart.destroy();
+      severidadChart = null;
+    }
     return;
   }
 
+  // Texto de estadísticas
   statsDiv.innerHTML = `
     <ul>
       <li><b>Total de reportes:</b> ${stats.total}</li>
@@ -797,6 +820,46 @@ function actualizarEstadisticas() {
       <li><b>Puntos críticos:</b> ${stats.puntosCriticos}</li>
     </ul>
   `;
+
+  // Gráfico de torta de severidades (usando porcentaje o conteo, tú decides)
+  const ctx = document.getElementById("grafico-severidad").getContext("2d");
+  const dataSev = [stats.sev.Baja, stats.sev.Media, stats.sev.Alta];
+
+  if (severidadChart) {
+    // actualizar datos si ya existe
+    severidadChart.data.datasets[0].data = dataSev;
+    severidadChart.update();
+  } else {
+    // crear el gráfico
+    severidadChart = new Chart(ctx, {
+      type: "pie",
+      data: {
+        labels: ["Baja", "Media", "Alta"],
+        datasets: [{
+          data: dataSev,
+          backgroundColor: ["#4ade80", "#facc15", "#ef4444"], // verde, amarillo, rojo
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            position: "bottom"
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const idx = context.dataIndex;
+                const label = context.label || "";
+                const value = context.raw;
+                const pct = [stats.pctSev.Baja, stats.pctSev.Media, stats.pctSev.Alta][idx];
+                return `${label}: ${value} (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
 }
 
 if (selectComuna) {
