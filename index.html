@@ -257,6 +257,39 @@
       max-height: 260px;
     }
 
+    /* ====== LEYENDA (SIMBOLOGÍA) ====== */
+    .legend {
+      line-height: 1.2;
+      color: #111827;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 6px 8px;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+      font-size: 0.75rem;
+    }
+
+    .legend h4 {
+      margin: 0 0 4px 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .legend i {
+      width: 10px;
+      height: 10px;
+      float: left;
+      margin-right: 6px;
+      margin-top: 3px;
+      opacity: 0.9;
+      border-radius: 999px;
+      border: 1px solid #333;
+    }
+
+    .legend span {
+      display: block;
+      margin-bottom: 2px;
+    }
+
     @media (max-width: 900px) {
       .layout {
         grid-template-columns: 1fr;
@@ -617,6 +650,31 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors"
 }).addTo(map);
 
+// =====================================================
+// LEYENDA (SIMBOLOGÍA DE SUPERFICIES)
+// =====================================================
+const legend = L.control({ position: "bottomleft" });
+
+legend.onAdd = function (map) {
+  const div = L.DomUtil.create("div", "legend");
+
+  div.innerHTML = `
+    <h4>Superficie</h4>
+    <span><i style="background:#e41a1c"></i>Vereda</span>
+    <span><i style="background:#377eb8"></i>Cruce</span>
+    <span><i style="background:#984ea3"></i>Pasarela</span>
+    <span><i style="background:#4daf4a"></i>Plaza / área verde</span>
+    <span><i style="background:#ff7f00"></i>Otro</span>
+  `;
+
+  L.DomEvent.disableClickPropagation(div);
+  L.DomEvent.disableScrollPropagation(div);
+
+  return div;
+};
+
+legend.addTo(map);
+
 // Evitar que los clics/scroll del panel de filtros afecten al mapa
 const filtroPanel = document.querySelector(".filtro-panel");
 if (filtroPanel) {
@@ -821,7 +879,7 @@ function actualizarEstadisticas() {
     </ul>
   `;
 
-  // Gráfico de torta de severidades (usando porcentaje o conteo, tú decides)
+  // Gráfico de torta de severidades
   const ctx = document.getElementById("grafico-severidad").getContext("2d");
   const dataSev = [stats.sev.Baja, stats.sev.Media, stats.sev.Alta];
 
@@ -1092,7 +1150,7 @@ supabase
       reportes.features.push(feature);
 
       aplicarFiltros();
-      actualizarOpcionesComuna();
+      actualizarOpccionesComuna();
       actualizarEstadisticas();
     }
   )
